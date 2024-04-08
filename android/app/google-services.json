@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "505927089970",
+    "firebase_url": "https://pi8iftm-default-rtdb.firebaseio.com",
+    "project_id": "pi8iftm",
+    "storage_bucket": "pi8iftm.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:505927089970:android:9fed50a3fe07377127212b",
+        "android_client_info": {
+          "package_name": "com.example.pi8"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "505927089970-59tr5kt5t9r9jqgr6tuuga17kr3nc53i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASBjf8jt37LFtUpQiIBgPCUSHURBCI2W4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "505927089970-59tr5kt5t9r9jqgr6tuuga17kr3nc53i.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "505927089970-7mhqghaj1t5tcamdc75p8isnuq7p36is.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.pi8app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
