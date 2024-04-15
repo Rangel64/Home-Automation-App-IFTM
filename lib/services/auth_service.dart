@@ -2,9 +2,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:pi8/views/group/view_group.dart';
 
 import '../main.dart';
-import '../view_group.dart';
+
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -15,7 +16,7 @@ class AuthService {
       // Se estiver logado, redireciona para a outra tela
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => ViewGroups()),
+        MaterialPageRoute(builder: (context) => const ViewGroups()),
       );
       return _auth.currentUser;
     }
@@ -30,5 +31,19 @@ class AuthService {
 
     final userCredential = await _auth.signInWithCredential(credential);
     return userCredential.user;
+  }
+  getProfileImage(){
+    if(_auth.currentUser!.photoURL!=null){
+
+      return CircleAvatar(
+        radius: 30.0,
+        backgroundImage:
+        NetworkImage(_auth.currentUser!.photoURL!),
+        backgroundColor: Colors.transparent,
+      );
+    }
+    else{
+      return Icon(Icons.account_circle,size: 100,);
+    }
   }
 }

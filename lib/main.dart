@@ -1,13 +1,9 @@
-
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:pi8/view_group.dart';
+import 'package:pi8/views/account/Login.dart';
+import 'package:pi8/views/group/view_group.dart';
 import 'firebase_options.dart';
 import 'package:flutter/material.dart';
-
-
-import 'account/Login.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

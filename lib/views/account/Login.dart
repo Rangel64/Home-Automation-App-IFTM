@@ -2,9 +2,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import '../main.dart';
-import '../services/auth_service.dart';
-import '../view_group.dart';
+
+
+import '../../services/auth_service.dart';
+import '../group/view_group.dart';
 
 
 class Login extends StatefulWidget {
