@@ -8,6 +8,7 @@ import 'package:pi8/services/group_services.dart';
 import 'package:pi8/services/relay_service.dart';
 import 'package:pi8/utils/utils.dart';
 import 'package:pi8/widgets/RelayCard.dart';
+import 'package:unicons/unicons.dart';
 
 class AddGroup extends StatefulWidget {
   const AddGroup({Key? key}) : super(key: key);
@@ -49,15 +50,22 @@ class AddGroupState extends State<AddGroup> {
       filter: {"#": RegExp(r'[0-9]')},
       type: MaskAutoCompletionType.lazy);
 
-  Future<List<Relay>> getRelays() async {
+  Future<List<Relay>> getRelays({Duration timeoutDuration = const Duration(seconds: 10)}) async {
     if (!_relaysLoaded) {
-      _relays = await relayService.getAllRelays();
-      _relaysLoaded = true;
-      return _relays;
+      try {
+        _relays = await relayService.getAllRelays().timeout(timeoutDuration);
+        _relaysLoaded = true;
+        return _relays;
+      } catch (e) {
+        // Tratar erro de timeout ou outras exceções
+        print('Error fetching groups: $e');
+        throw e;
+      }
     } else {
       return _relays;
     }
   }
+
 
   GroupService groupService = GroupService();
 
@@ -67,7 +75,7 @@ class AddGroupState extends State<AddGroup> {
   @override
   void initState() {
     super.initState();
-    load();
+    load(context);
   }
 
   Widget relayCard(Relay relay) {
@@ -93,43 +101,45 @@ class AddGroupState extends State<AddGroup> {
 
   late Widget component;
 
-  Future<void> load() async {
+  Future<void> load(BuildContext context) async {
     component = FutureBuilder<List<Relay>>(
-        future: getRelays(),
+        future: getRelays(timeoutDuration: const Duration(seconds: 5)),
         builder: (BuildContext context, AsyncSnapshot<List<Relay>> snapshot) {
-          switch (snapshot.connectionState) {
-            case ConnectionState.none:
-            case ConnectionState.waiting:
-              return const CircularProgressIndicator(
-                color: Colors.white70,
-              );
-            default:
-              if (snapshot.hasError) {
-                return Text('Error: ${snapshot.error}');
-              } else {
-                List<Relay> updatedRelays = snapshot.data!;
-                if(updatedRelays.isNotEmpty){
-                  if (!_relaysLoaded) {
-                    _relays = updatedRelays;
-                    _relaysLoaded = true;
+          try {
+            switch (snapshot.connectionState) {
+              case ConnectionState.none:
+              case ConnectionState.waiting:
+                return const CircularProgressIndicator(
+                  color: Colors.white70,
+                );
+              default:
+                if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}');
+                } else {
+                  List<Relay> updatedRelays = snapshot.data!;
+                  if (updatedRelays.isNotEmpty) {
+                    if (!_relaysLoaded) {
+                      _relays = updatedRelays;
+                      _relaysLoaded = true;
+                    }
+                    return CarouselSlider(
+                      items:
+                      updatedRelays.map((relay) => relayCard(relay)).toList(),
+                      options: CarouselOptions(
+                        height: 150,
+                        enlargeCenterPage: true,
+                        viewportFraction: 0.8,
+                      ),
+                    );
                   }
-                  return CarouselSlider(
-                    items:
-                    updatedRelays.map((relay) => relayCard(relay)).toList(),
-                    options: CarouselOptions(
-                      height: 150,
-                      enlargeCenterPage: true,
-                      viewportFraction: 0.8,
-                    ),
-                  );
+                  else {
+                    return notFound();
+                  }
                 }
-                else{
-                  return notFound();
-                }
-
-
-              }
-          }
+            }
+          } catch (e) {
+      return lostConnection();
+    }
         });
   }
 
@@ -142,6 +152,43 @@ class AddGroupState extends State<AddGroup> {
         child: const Text(
           "Nenhum componente disponivel",
           style: TextStyle(color: Colors.white, fontSize: 20),
+        ));
+  }
+
+  Widget lostConnection() {
+    return Container(
+        decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30.0), color: Colors.black45),
+        padding: const EdgeInsets.fromLTRB(10, 20, 10, 20),
+        margin: const EdgeInsets.fromLTRB(80, 0, 80, 50),
+        child: Column(
+          children: [
+            const Text(
+              "Erro ao Carregar",
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            )
+            ,
+            Container(
+                margin: const EdgeInsets.fromLTRB(0, 50, 0, 5),
+                child: Center(
+                    child: SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: FloatingActionButton(
+                        backgroundColor: Colors.black54,
+                        onPressed: () {
+                          setState(() {
+                            load(context);
+                          });
+                        },
+                        child: const Icon(
+                          UniconsLine.refresh,
+                          color: Colors.white,
+                          size: 25,
+                        ),
+                      ),
+                    )))
+          ],
         ));
   }
 

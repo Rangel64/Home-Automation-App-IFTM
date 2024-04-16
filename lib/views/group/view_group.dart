@@ -1,21 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
-
-import 'package:carousel_slider/carousel_options.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:pi8/models/group.dart';
+import 'package:pi8/server/server.dart';
 import 'package:pi8/services/auth_service.dart';
 import 'package:pi8/services/group_services.dart';
-import 'package:pi8/services/relay_service.dart';
 import 'package:pi8/views/group/add_group.dart';
 import 'package:pi8/widgets/GroupCard.dart';
 import 'package:unicons/unicons.dart';
-
-import '../../models/relay.dart';
 
 class ViewGroups extends StatefulWidget {
   const ViewGroups({super.key});
@@ -36,7 +30,7 @@ class ViewGroupsState extends State<ViewGroups> {
   GroupService groupService = GroupService();
 
   List<Group> _groups = [];
-  bool _groupsLoaded = false;
+  bool groupsLoaded = false;
 
   @override
   void initState() {
@@ -54,8 +48,7 @@ class ViewGroupsState extends State<ViewGroups> {
   }
 
   void fetchData() async {
-    String url = 'http://10.0.2.2:5000';
-    dynamic response = await http.get(Uri.parse("$url/get_metrics"));
+    dynamic response = await http.get(Uri.parse("${Server.url}/get_metrics"));
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
       data = data["response"];
@@ -72,23 +65,32 @@ class ViewGroupsState extends State<ViewGroups> {
     }
   }
 
-  Future<List<Group>> getGroups() async {
-    _groups = await groupService.getAllGroups();
-    print(_groups.length);
-    _groupsLoaded = true;
-    return _groups;
+  Future<List<Group>> getGroups({Duration timeoutDuration = const Duration(seconds: 10)}) async {
+    try {
+      _groups = await groupService.getAllGroups().timeout(timeoutDuration);
+      groupsLoaded = true;
+      return _groups;
+    } catch (e) {
+      // Tratar erro de timeout ou outras exceções
+      print('Error fetching groups: $e');
+      throw e;
+    }
   }
 
-  Widget groupCard(Group group,double _textScaleFactor) {
-    return GroupCard(group: group,textScaleFactor: _textScaleFactor,);
+  Widget groupCard(Group group, double textScaleFactor) {
+    return GroupCard(
+      group: group,
+      textScaleFactor: textScaleFactor,
+    );
   }
 
   late Widget component;
 
   Future<void> load(BuildContext context) async {
     component = FutureBuilder<List<Group>>(
-        future: getGroups(),
-        builder: (BuildContext context, AsyncSnapshot<List<Group>> snapshot) {
+      future: getGroups(timeoutDuration: const Duration(seconds: 5)),
+      builder: (BuildContext context, AsyncSnapshot<List<Group>> snapshot) {
+        try {
           switch (snapshot.connectionState) {
             case ConnectionState.none:
             case ConnectionState.waiting:
@@ -97,31 +99,34 @@ class ViewGroupsState extends State<ViewGroups> {
               );
             default:
               if (snapshot.hasError) {
-                return Text('Error: ${snapshot.error}');
+                return lostConnection();
               } else {
                 List<Group> updatedGroups = snapshot.data!;
                 if (updatedGroups.isNotEmpty) {
-                  // if (!_groupsLoaded) {
                   _groups = updatedGroups;
-                  _groupsLoaded = true;
-                  // }
+                  groupsLoaded = true;
                   return CarouselSlider(
                     carouselController: CarouselController(),
-                    items:
-                        updatedGroups.map((group) => groupCard(group,_textScaleFactor)).toList(),
+                    items: updatedGroups
+                        .map((group) => groupCard(group, _textScaleFactor))
+                        .toList(),
                     options: CarouselOptions(
-                        height: 320,
-                        enlargeCenterPage: true,
-                        viewportFraction: 0.8,
-                        onPageChanged: (index, _) =>
-                            _updateTextScaleFactor(index)),
+                      height: 320,
+                      enlargeCenterPage: true,
+                      viewportFraction: 0.8,
+                      onPageChanged: (index, _) => _updateTextScaleFactor(index),
+                    ),
                   );
                 } else {
                   return notFound();
                 }
               }
           }
-        });
+        } catch (e) {
+          return lostConnection();
+        }
+      },
+    );
   }
 
   double _textScaleFactor = 1.0;
@@ -144,6 +149,43 @@ class ViewGroupsState extends State<ViewGroups> {
         ));
   }
 
+  Widget lostConnection() {
+    return Container(
+        decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30.0), color: Colors.black45),
+        padding: const EdgeInsets.fromLTRB(10, 20, 10, 20),
+        margin: const EdgeInsets.fromLTRB(80, 0, 80, 50),
+        child: Column(
+          children: [
+            const Text(
+              "Erro ao Carregar",
+              style: TextStyle(color: Colors.white, fontSize: 20),
+            )
+            ,
+            Container(
+                margin: const EdgeInsets.fromLTRB(0, 50, 0, 5),
+                child: Center(
+                    child: SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: FloatingActionButton(
+                        backgroundColor: Colors.black54,
+                        onPressed: () {
+                          setState(() {
+                            load(context);
+                          });
+                        },
+                        child: const Icon(
+                          UniconsLine.refresh,
+                          color: Colors.white,
+                          size: 25,
+                        ),
+                      ),
+                    )))
+          ],
+        ));
+  }
+
   late Widget? user;
 
   @override
@@ -162,7 +204,11 @@ class ViewGroupsState extends State<ViewGroups> {
                         margin: const EdgeInsets.fromLTRB(0, 70, 15, 0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
-                          children: [CircleAvatar(child: user,)],
+                          children: [
+                            CircleAvatar(
+                              child: user,
+                            )
+                          ],
                         )),
                     Container(
                       margin: const EdgeInsets.fromLTRB(10, 140, 10, 0),
