@@ -7,7 +7,7 @@ import 'package:pi8/models/relay.dart';
 import 'package:pi8/services/group_services.dart';
 import 'package:pi8/services/relay_service.dart';
 import 'package:pi8/utils/utils.dart';
-import 'package:pi8/widgets/RelayCard.dart';
+import 'package:pi8/widgets/relay_card.dart';
 import 'package:unicons/unicons.dart';
 
 class AddGroup extends StatefulWidget {
@@ -103,7 +103,7 @@ class AddGroupState extends State<AddGroup> {
 
   Future<void> load(BuildContext context) async {
     component = FutureBuilder<List<Relay>>(
-        future: getRelays(timeoutDuration: const Duration(seconds: 5)),
+        future: getRelays(timeoutDuration: const Duration(seconds: 30)),
         builder: (BuildContext context, AsyncSnapshot<List<Relay>> snapshot) {
           try {
             switch (snapshot.connectionState) {

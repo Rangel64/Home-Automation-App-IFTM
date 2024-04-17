@@ -13,4 +13,22 @@ class RelayService{
     List<Relay> list = (data.isNotEmpty ? (data as List).map((c) => Relay.fromMap(c)).toList():[]);
     return list;
   }
+
+  Future<List<Relay>> getRelays() async {
+    String finalUrl = '${Server.url}/get_relays_control';
+    dynamic response = await http.get(Uri.parse(finalUrl));
+    var data = json.decode(response.body);
+    data = data['response'];
+    List<Relay> list = (data.isNotEmpty ? (data as List).map((c) => Relay.fromMap(c)).toList():[]);
+    return list;
+  }
+
+  Future<bool> setActivateRelay(Relay relay)async {
+    String finalUrl = '${Server.url}/set_activate_relay';
+    dynamic response = await http.post(Uri.parse(finalUrl),
+        body: json.encode(relay.toMap()));
+    var data = json.decode(response.body);
+    print(data["response"]);
+    return true;
+  }
 }

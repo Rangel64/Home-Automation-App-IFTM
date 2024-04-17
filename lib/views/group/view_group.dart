@@ -8,7 +8,8 @@ import 'package:pi8/server/server.dart';
 import 'package:pi8/services/auth_service.dart';
 import 'package:pi8/services/group_services.dart';
 import 'package:pi8/views/group/add_group.dart';
-import 'package:pi8/widgets/GroupCard.dart';
+import 'package:pi8/views/relay/relay_control.dart';
+import 'package:pi8/widgets/group_card.dart';
 import 'package:unicons/unicons.dart';
 
 class ViewGroups extends StatefulWidget {
@@ -65,7 +66,8 @@ class ViewGroupsState extends State<ViewGroups> {
     }
   }
 
-  Future<List<Group>> getGroups({Duration timeoutDuration = const Duration(seconds: 10)}) async {
+  Future<List<Group>> getGroups(
+      {Duration timeoutDuration = const Duration(seconds: 10)}) async {
     try {
       _groups = await groupService.getAllGroups().timeout(timeoutDuration);
       groupsLoaded = true;
@@ -88,7 +90,7 @@ class ViewGroupsState extends State<ViewGroups> {
 
   Future<void> load(BuildContext context) async {
     component = FutureBuilder<List<Group>>(
-      future: getGroups(timeoutDuration: const Duration(seconds: 5)),
+      future: getGroups(timeoutDuration: const Duration(seconds: 10)),
       builder: (BuildContext context, AsyncSnapshot<List<Group>> snapshot) {
         try {
           switch (snapshot.connectionState) {
@@ -114,7 +116,8 @@ class ViewGroupsState extends State<ViewGroups> {
                       height: 320,
                       enlargeCenterPage: true,
                       viewportFraction: 0.8,
-                      onPageChanged: (index, _) => _updateTextScaleFactor(index),
+                      onPageChanged: (index, _) =>
+                          _updateTextScaleFactor(index),
                     ),
                   );
                 } else {
@@ -160,28 +163,27 @@ class ViewGroupsState extends State<ViewGroups> {
             const Text(
               "Erro ao Carregar",
               style: TextStyle(color: Colors.white, fontSize: 20),
-            )
-            ,
+            ),
             Container(
                 margin: const EdgeInsets.fromLTRB(0, 50, 0, 5),
                 child: Center(
                     child: SizedBox(
-                      width: 50,
-                      height: 50,
-                      child: FloatingActionButton(
-                        backgroundColor: Colors.black54,
-                        onPressed: () {
-                          setState(() {
-                            load(context);
-                          });
-                        },
-                        child: const Icon(
-                          UniconsLine.refresh,
-                          color: Colors.white,
-                          size: 25,
-                        ),
-                      ),
-                    )))
+                  width: 50,
+                  height: 50,
+                  child: FloatingActionButton(
+                    backgroundColor: Colors.black54,
+                    onPressed: () {
+                      setState(() {
+                        load(context);
+                      });
+                    },
+                    child: const Icon(
+                      UniconsLine.refresh,
+                      color: Colors.white,
+                      size: 25,
+                    ),
+                  ),
+                )))
           ],
         ));
   }
@@ -274,33 +276,96 @@ class ViewGroupsState extends State<ViewGroups> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Container(
-                            margin: const EdgeInsets.fromLTRB(0, 0, 0, 30),
-                            child: Center(
-                                child: SizedBox(
-                              width: 80,
-                              height: 80,
-                              child: FloatingActionButton(
-                                backgroundColor: Colors.black54,
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => const AddGroup()),
-                                  ).then((value) {
-                                    if (value == "closed") {
-                                      setState(() {
-                                        load(context);
-                                      });
-                                    }
-                                  });
-                                },
-                                child: const Icon(
-                                  UniconsLine.plus_circle,
-                                  color: Colors.white,
-                                  size: 40,
-                                ),
-                              ),
-                            )))
+                          margin: const EdgeInsets.fromLTRB(50, 0, 50, 0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                  margin:
+                                      const EdgeInsets.fromLTRB(0, 0, 0, 30),
+                                  child: Center(
+                                      child: SizedBox(
+                                    width: 60,
+                                    height: 60,
+                                    child: FloatingActionButton(
+                                      backgroundColor: Colors.black54,
+                                      onPressed: () {
+                                        setState(() {
+                                          load(context);
+                                        });
+                                      },
+                                      child: const Icon(
+                                        UniconsLine.refresh,
+                                        color: Colors.white,
+                                        size: 26.6,
+                                      ),
+                                    ),
+                                  ))),
+                              const Spacer(),
+                              Container(
+                                  margin:
+                                      const EdgeInsets.fromLTRB(0, 0, 0, 30),
+                                  child: Center(
+                                      child: SizedBox(
+                                    width: 80,
+                                    height: 80,
+                                    child: FloatingActionButton(
+                                      backgroundColor: Colors.black54,
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const AddGroup()),
+                                        ).then((value) {
+                                          if (value == "closed") {
+                                            setState(() {
+                                              load(context);
+                                            });
+                                          }
+                                        });
+                                      },
+                                      child: const Icon(
+                                        UniconsLine.plus_circle,
+                                        color: Colors.white,
+                                        size: 40,
+                                      ),
+                                    ),
+                                  ))),
+                              const Spacer(),
+                              Container(
+                                  margin:
+                                      const EdgeInsets.fromLTRB(0, 0, 0, 30),
+                                  child: Center(
+                                      child: SizedBox(
+                                    width: 60,
+                                    height: 60,
+                                    child: FloatingActionButton(
+                                      backgroundColor: Colors.black54,
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const RelayControll()),
+                                        ).then((value) {
+                                          if (value == "closed") {
+                                            setState(() {
+                                              load(context);
+                                            });
+                                          }
+                                        });
+                                      },
+                                      child: const Icon(
+                                        UniconsLine.setting,
+                                        color: Colors.white,
+                                        size: 26.6,
+                                      ),
+                                    ),
+                                  )))
+                            ],
+                          ),
+                        )
                       ],
                     )
                   ],

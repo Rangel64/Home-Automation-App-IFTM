@@ -15,6 +15,7 @@ class Relay{
   }
 
   Map<String,dynamic> toMap() => <String,dynamic>{
+    "id":id,
     "id_group": id_group,
     "isManual": isManual
   };
