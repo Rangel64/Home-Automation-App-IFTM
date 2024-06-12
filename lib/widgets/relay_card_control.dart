@@ -25,7 +25,7 @@ class RelayCardControlState extends State<RelayCardControl> {
   @override
   void initState() {
     super.initState();
-    if (widget.relay.isManual) {
+    if (widget.relay.state) {
       setState(() {
         _cardColor = Colors.red;
       });
@@ -34,7 +34,7 @@ class RelayCardControlState extends State<RelayCardControl> {
         _cardColor = Colors.white;
       });
     }
-    print(widget.relay.isManual);
+    print(widget.relay.state);
 
   }
 
@@ -51,6 +51,7 @@ class RelayCardControlState extends State<RelayCardControl> {
         splashColor: Colors.white.withAlpha(30),
         onTap: () async {
           widget.relay.isManual = !widget.relay.isManual;
+          widget.relay.state = !widget.relay.state;
           bool res = await relayService.setActivateRelay(widget.relay);
           if(res){
             _changeColor();

@@ -11,7 +11,7 @@ import 'package:pi8/widgets/relay_card.dart';
 import 'package:unicons/unicons.dart';
 
 class AddGroup extends StatefulWidget {
-  const AddGroup({Key? key}) : super(key: key);
+  const AddGroup({super.key});
 
   @override
   AddGroupState createState() => AddGroupState();
@@ -66,7 +66,6 @@ class AddGroupState extends State<AddGroup> {
     }
   }
 
-
   GroupService groupService = GroupService();
 
   List<Relay> _relays = [];
@@ -83,19 +82,67 @@ class AddGroupState extends State<AddGroup> {
   }
 
   Future<void> save() async {
-    time_on = Utils.convertTime(time_on_);
-    time_off = Utils.convertTime(time_off_);
-    Group group = Group(
-        name: name, controll_pot: _isCheckedPot, controll_time: _isCheckedTime);
-    group.pot_max = pot_max;
-    group.pot_min = pot_min;
-    group.time_on = time_on!;
-    group.time_off = time_off!;
-    group.relays = selectedRelayIds;
-    print(group.relays.length);
-    bool res = await groupService.setGroup(group);
-    if (res) {
-      Navigator.pop(context, "closed");
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          backgroundColor: Colors.lightBlueAccent,
+          content: SizedBox(
+            height: 60,
+            child: Center(
+              child: CircularProgressIndicator(color: Colors.white70,),
+            ),
+          )
+        );
+      },
+    );
+
+    try {
+      print(time_on_);
+      time_on = Utils.convertTime(time_on_);
+      time_off = Utils.convertTime(time_off_);
+      Group group = Group(
+          name: name, controll_pot: _isCheckedPot, controll_time: _isCheckedTime);
+      group.pot_max = pot_max;
+      group.pot_min = pot_min;
+      print(time_on);
+      group.time_on = time_on!;
+      group.time_off = time_off!;
+      group.relays = selectedRelayIds;
+      print(group.relays.length);
+      String res = await groupService.setGroup(group);
+      Navigator.of(context).pop(); // Close the loading dialog
+      if (res == "done") {
+        Fluttertoast.showToast(
+            msg: "Grupo criado com sucesso.",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.CENTER,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.grey,
+            textColor: Colors.black,
+            fontSize: 16.0);
+        Navigator.pop(context, "closed");
+      } else {
+        Fluttertoast.showToast(
+            msg: "Erro ao criar o grupo.",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.CENTER,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.grey,
+            textColor: Colors.black,
+            fontSize: 16.0);
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Close the loading dialog
+      Fluttertoast.showToast(
+          msg: "Erro ao criar o grupo.",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.grey,
+          textColor: Colors.black,
+          fontSize: 16.0);
     }
   }
 
@@ -248,9 +295,17 @@ class AddGroupState extends State<AddGroup> {
                         checkColor: Colors.black,
                         hoverColor: Colors.white,
                         tileColor: Colors.black45,
+                        secondary: const Icon(
+                          UniconsLine.bolt,
+                          color: Colors.white,
+                        ),
                         onChanged: (newValue) {
                           setState(() {
                             _isCheckedPot = newValue!;
+                            if(_isCheckedTime){
+                              pot_min = double.parse(controller_pot_min.text);
+                              pot_max = double.parse(controller_pot_max.text);
+                            }
                           });
                         },
                       ),
@@ -273,7 +328,7 @@ class AddGroupState extends State<AddGroup> {
                                     decoration: const InputDecoration(
                                       filled: true,
                                       fillColor: Colors.white,
-                                      labelText: 'Valor minimo de potencia',
+                                      labelText: 'Potência mínima (W)',
                                       labelStyle: TextStyle(color: Colors.grey),
                                     ),
                                     validator: (String? value) {
@@ -298,7 +353,7 @@ class AddGroupState extends State<AddGroup> {
                                     decoration: const InputDecoration(
                                       filled: true,
                                       fillColor: Colors.white,
-                                      labelText: 'Valor maximo de potencia',
+                                      labelText: 'Potência máxima (W)',
                                       labelStyle: TextStyle(color: Colors.grey),
                                     ),
                                     validator: (String? value) {
@@ -326,9 +381,17 @@ class AddGroupState extends State<AddGroup> {
                         checkColor: Colors.black,
                         tileColor: Colors.black45,
                         hoverColor: Colors.white,
+                        secondary: const Icon(
+                          UniconsLine.clock,
+                          color: Colors.white,
+                        ),
                         onChanged: (newValue) {
                           setState(() {
                             _isCheckedTime = newValue!;
+                            if(_isCheckedTime){
+                              time_on_ = controller_time_on.text;
+                              time_off_ = controller_time_off.text;
+                            }
                           });
                         },
                       ),
@@ -353,7 +416,7 @@ class AddGroupState extends State<AddGroup> {
                                     decoration: const InputDecoration(
                                       filled: true,
                                       fillColor: Colors.white,
-                                      labelText: 'Horario de ativação (HH:MM)',
+                                      labelText: 'Horário de Ligamento (HH:MM)',
                                       labelStyle: TextStyle(color: Colors.grey),
                                     ),
                                     validator: (String? value) {
@@ -381,7 +444,7 @@ class AddGroupState extends State<AddGroup> {
                                       filled: true,
                                       fillColor: Colors.white,
                                       labelText:
-                                          'Horario de desligamento (HH:MM)',
+                                          'Horário de Desligamento (HH:MM)',
                                       labelStyle: TextStyle(color: Colors.grey),
                                     ),
                                     validator: (String? value) {
@@ -401,8 +464,15 @@ class AddGroupState extends State<AddGroup> {
                         ),
                       ),
                       const SizedBox(
-                        height: 50,
+                        height: 30,
                       ),
+                      Container(
+                          margin: const EdgeInsets.fromLTRB(0, 0, 0, 40),
+                          child: const Text("Selecione os relés do grupo",
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w500))),
                       component,
                       const SizedBox(
                         height: 50,

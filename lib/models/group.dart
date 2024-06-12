@@ -21,8 +21,8 @@ class Group {
   factory Group.fromMap(Map<String, dynamic> json) {
     Group group = Group(
       name: json["name"],
-      controll_pot: json["controll_pot"] == true.toString(),
-      controll_time: json["controll_time"] == true.toString(),
+      controll_pot: json["controll_pot"],
+      controll_time: json["controll_time"],
     );
 
     if (json["id"] != null) group.id = json["id"];
@@ -49,8 +49,8 @@ class Group {
   Map<String,dynamic> toMap() => <String,dynamic>{
     "id": id.toString(),
     "name": name.toString(),
-    "controll_pot": controll_pot.toString(),
-    "controll_time": controll_time.toString(),
+    "controll_pot": controll_pot,
+    "controll_time": controll_time,
     "pot_max": pot_max.toString(),
     "pot_min": pot_min.toString(),
     "time_off": "${time_off.hour}:${time_off.minute}",

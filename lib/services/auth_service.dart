@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:pi8/views/group/view_group.dart';
+import 'package:pi8/home.dart';
 
 import '../main.dart';
 

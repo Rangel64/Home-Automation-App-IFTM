@@ -1,143 +1,102 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:pi8/models/group.dart';
-import 'package:pi8/server/server.dart';
-import 'package:pi8/services/auth_service.dart';
+import 'package:pi8/models/relay.dart';
 import 'package:pi8/services/group_services.dart';
-import 'package:pi8/views/group/add_group.dart';
-import 'package:pi8/views/relay/relay_control.dart';
-import 'package:pi8/widgets/group_card.dart';
+import 'package:pi8/services/relay_service.dart';
+import 'package:pi8/views/group/updade_group.dart';
+import 'package:pi8/widgets/relay_card_control.dart';
 import 'package:unicons/unicons.dart';
 
-class ViewGroups extends StatefulWidget {
-  const ViewGroups({super.key});
+class ViewGroup extends StatefulWidget{
+  Group group;
+  dynamic contextHome;
+  Function load;
+  ViewGroup({super.key,required this.group,required this.contextHome, required this.load});
 
-  @override
-  ViewGroupsState createState() => ViewGroupsState();
+  ViewGroupState createState ()=> ViewGroupState();
 }
 
-class ViewGroupsState extends State<ViewGroups> {
-  dynamic voltage = 0;
-  dynamic current = 0;
-  dynamic power = 0;
-  dynamic energy = 0;
-  dynamic frequency = 0;
-  dynamic pf = 0;
-  late Timer timer;
+class ViewGroupState extends State<ViewGroup>{
+
+  List<Relay> _relays = [];
+  bool _relaysLoaded = false;
+
+  RelayService relayService = RelayService();
+
+  List<Relay> relays = [];
 
   GroupService groupService = GroupService();
-
-  List<Group> _groups = [];
-  bool groupsLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    timer = Timer.periodic(
-        const Duration(milliseconds: 500), (Timer t) => fetchData());
     load(context);
-    user = AuthService().getProfileImage();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-    timer.cancel();
-  }
-
-  void fetchData() async {
-    dynamic response = await http.get(Uri.parse("${Server.url}/get_metrics"));
-    if (response.statusCode == 200) {
-      var data = jsonDecode(response.body);
-      data = data["response"];
-      setState(() {
-        voltage = data['voltage'];
-        current = data['current'];
-        power = data['power'];
-        energy = data['energy'];
-        frequency = data['frequency'];
-        pf = data['pf'];
-      });
+  Future<List<Relay>> getRelays({Duration timeoutDuration = const Duration(seconds: 10)}) async {
+    if (!_relaysLoaded) {
+      try {
+        _relays = await relayService.getAllRelaysGroup(widget.group).timeout(timeoutDuration);
+        _relaysLoaded = true;
+        return _relays;
+      } catch (e) {
+        print('Error fetching groups: $e');
+        throw e;
+      }
     } else {
-      throw Exception('Failed to load data');
+      return _relays;
     }
   }
 
-  Future<List<Group>> getGroups(
-      {Duration timeoutDuration = const Duration(seconds: 10)}) async {
-    try {
-      _groups = await groupService.getAllGroups().timeout(timeoutDuration);
-      groupsLoaded = true;
-      return _groups;
-    } catch (e) {
-      // Tratar erro de timeout ou outras exceções
-      print('Error fetching groups: $e');
-      throw e;
-    }
-  }
-
-  Widget groupCard(Group group, double textScaleFactor) {
-    return GroupCard(
-      group: group,
-      textScaleFactor: textScaleFactor,
-    );
+  Widget relayCard(Relay relay) {
+    return RelayCardControl(relay: relay);
   }
 
   late Widget component;
 
   Future<void> load(BuildContext context) async {
-    component = FutureBuilder<List<Group>>(
-      future: getGroups(timeoutDuration: const Duration(seconds: 10)),
-      builder: (BuildContext context, AsyncSnapshot<List<Group>> snapshot) {
-        try {
-          switch (snapshot.connectionState) {
-            case ConnectionState.none:
-            case ConnectionState.waiting:
-              return const CircularProgressIndicator(
-                color: Colors.white70,
-              );
-            default:
-              if (snapshot.hasError) {
-                return lostConnection();
-              } else {
-                List<Group> updatedGroups = snapshot.data!;
-                if (updatedGroups.isNotEmpty) {
-                  _groups = updatedGroups;
-                  groupsLoaded = true;
-                  return CarouselSlider(
-                    carouselController: CarouselController(),
-                    items: updatedGroups
-                        .map((group) => groupCard(group, _textScaleFactor))
-                        .toList(),
-                    options: CarouselOptions(
-                      height: 320,
-                      enlargeCenterPage: true,
-                      viewportFraction: 0.8,
-                      onPageChanged: (index, _) =>
-                          _updateTextScaleFactor(index),
-                    ),
-                  );
+    component = FutureBuilder<List<Relay>>(
+        future: getRelays(timeoutDuration: const Duration(seconds: 30)),
+        builder: (BuildContext context, AsyncSnapshot<List<Relay>> snapshot) {
+          try {
+            switch (snapshot.connectionState) {
+              case ConnectionState.none:
+              case ConnectionState.waiting:
+                return const CircularProgressIndicator(
+                  color: Colors.white70,
+                );
+              default:
+                if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}');
                 } else {
-                  return notFound();
+                  List<Relay> updatedRelays = snapshot.data!;
+                  if (updatedRelays.isNotEmpty) {
+                    if (!_relaysLoaded) {
+                      _relays = updatedRelays;
+                      _relaysLoaded = true;
+                    }
+                    return CarouselSlider(
+                      items:
+                      updatedRelays.map((relay) => relayCard(relay)).toList(),
+                      options: CarouselOptions(
+                        height: 200,
+                        enlargeCenterPage: true,
+                        viewportFraction: 0.8,
+                      ),
+                    );
+                  }
+                  else {
+                    return notFound();
+                  }
                 }
-              }
+            }
+          } catch (e) {
+            return lostConnection();
           }
-        } catch (e) {
-          return lostConnection();
-        }
-      },
-    );
-  }
-
-  double _textScaleFactor = 1.0;
-
-  void _updateTextScaleFactor(int index) {
-    setState(() {
-      _textScaleFactor = index == 0 ? 1.0 : 0.8;
-    });
+        });
   }
 
   Widget notFound() {
@@ -147,7 +106,7 @@ class ViewGroupsState extends State<ViewGroups> {
         padding: const EdgeInsets.fromLTRB(30, 30, 30, 30),
         margin: const EdgeInsets.fromLTRB(0, 0, 0, 50),
         child: const Text(
-          "Nenhum grupo adicionado",
+          "Nenhum componente disponivel",
           style: TextStyle(color: Colors.white, fontSize: 20),
         ));
   }
@@ -163,35 +122,146 @@ class ViewGroupsState extends State<ViewGroups> {
             const Text(
               "Erro ao Carregar",
               style: TextStyle(color: Colors.white, fontSize: 20),
-            ),
+            )
+            ,
             Container(
                 margin: const EdgeInsets.fromLTRB(0, 50, 0, 5),
                 child: Center(
                     child: SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: FloatingActionButton(
-                    backgroundColor: Colors.black54,
-                    onPressed: () {
-                      setState(() {
-                        load(context);
-                      });
-                    },
-                    child: const Icon(
-                      UniconsLine.refresh,
-                      color: Colors.white,
-                      size: 25,
-                    ),
-                  ),
-                )))
+                      width: 50,
+                      height: 50,
+                      child: FloatingActionButton(
+                        backgroundColor: Colors.black54,
+                        onPressed: () {
+                          setState(() {
+                            load(context);
+                          });
+                        },
+                        child: const Icon(
+                          UniconsLine.refresh,
+                          color: Colors.white,
+                          size: 25,
+                        ),
+                      ),
+                    )))
           ],
         ));
   }
 
-  late Widget? user;
+  Future<void> deleteGroup() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+            backgroundColor: Colors.lightBlueAccent,
+            content: SizedBox(
+              height: 60,
+              child: Center(
+                child: CircularProgressIndicator(color: Colors.white70),
+              ),
+            )
+        );
+      },
+    );
+
+    try {
+      String res = await groupService.deleteGroup(widget.group);
+      Navigator.of(context).pop(); // Close the loading dialog
+      if (res == "done") {
+        Fluttertoast.showToast(
+            msg: "Grupo excluido com sucesso.",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.CENTER,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.grey,
+            textColor: Colors.black,
+            fontSize: 16.0);
+        Navigator.pop(context, "closed");
+      } else {
+        Fluttertoast.showToast(
+            msg: "Erro ao excluir o grupo.",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.CENTER,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.grey,
+            textColor: Colors.black,
+            fontSize: 16.0);
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Close the loading dialog
+      Fluttertoast.showToast(
+          msg: "Erro ao excluir o grupo.",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.grey,
+          textColor: Colors.black,
+          fontSize: 16.0);
+    }
+  }
+
+  Future<bool?> _showDeleteConfirmation() async {
+    return showDialog<bool?>(
+      context: context,
+      barrierDismissible: false, // Impede que o usuário feche clicando fora do diálogo
+      builder: (BuildContext context) {
+        return GestureDetector( // Captura o toque fora do diálogo
+          onTap: () {
+            Navigator.pop(context, false);
+          },
+          child: AlertDialog(
+            backgroundColor: Colors.lightBlueAccent,
+            shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(20))),
+            title: const Text('Tem certeza?',style: TextStyle(color: Colors.black87),),
+            actions: <Widget>[
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  backgroundColor: Colors.red,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.all(8),
+                ),
+                label: const Icon(Icons.close, size: 25, color: Colors.white,),
+                onPressed: () {
+                  Navigator.pop(context, false);
+                },
+                icon: const Text('Cancelar',style: TextStyle(color: Colors.white),),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  backgroundColor: Colors.black54,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.all(8),
+                ),
+                label: const Icon(Icons.check, size: 25,color: Colors.white),
+                onPressed: () async {
+                  Navigator.pop(context, false);
+                  deleteGroup();
+                },
+                icon: const Text('Confirmar exclusão',style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
     return Scaffold(
       body: Center(
           child: Container(
@@ -202,59 +272,68 @@ class ViewGroupsState extends State<ViewGroups> {
                 margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
                 child: Stack(
                   children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30.0),
+                              color: Colors.black54),
+                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                          margin: const EdgeInsets.fromLTRB(0, 80, 0, 20),
+                          child: const Text('Componentes',
+                              style: TextStyle(color: Colors.white, fontSize: 30)),
+                        )
+                      ],
+                    ),
                     Container(
-                        margin: const EdgeInsets.fromLTRB(0, 70, 15, 0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            CircleAvatar(
-                              child: user,
-                            )
-                          ],
-                        )),
-                    Container(
-                      margin: const EdgeInsets.fromLTRB(10, 140, 10, 0),
-                      padding: const EdgeInsets.fromLTRB(30, 10, 10, 10),
+                      margin: const EdgeInsets.fromLTRB(10, 180, 10, 0),
+                      padding: const EdgeInsets.fromLTRB(30, 10, 30, 10),
                       decoration: BoxDecoration(
                         color: Colors.black54,
                         borderRadius: BorderRadius.circular(30.0),
                       ),
                       child: SizedBox(
                         width: 390,
-                        height: 200,
+                        height: 300,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'Voltage: $voltage V',
-                              style: const TextStyle(
-                                  fontSize: 20, color: Colors.white),
+                              "Control Pot: ${widget.group.controll_pot}",
+                              style: const TextStyle(color: Colors.white, fontSize: 19),
                             ),
+                            const SizedBox(height: 4),
                             Text(
-                              'Current: $current A',
-                              style: const TextStyle(
-                                  fontSize: 20, color: Colors.white),
+                              "Control Time: ${widget.group.controll_time}",
+                              style: const TextStyle(color: Colors.white, fontSize: 19),
                             ),
+                            const SizedBox(height: 4),
                             Text(
-                              'Power: $power W',
-                              style: const TextStyle(
-                                  fontSize: 20, color: Colors.white),
+                              "Pot Max: ${widget.group.pot_max}",
+                              style: const TextStyle(color: Colors.white, fontSize: 19),
                             ),
+                            const SizedBox(height: 4),
                             Text(
-                              'Energy: $energy kWh',
-                              style: const TextStyle(
-                                  fontSize: 20, color: Colors.white),
+                              "Pot Min: ${widget.group.pot_min}",
+                              style: const TextStyle(color: Colors.white, fontSize: 19),
                             ),
+                            const SizedBox(height: 4),
                             Text(
-                              'Frequency: $frequency Hz',
-                              style: const TextStyle(
-                                  fontSize: 20, color: Colors.white),
+                              "Time Off: ${widget.group.time_off.hour}:${widget.group.time_off.minute}",
+                              style: const TextStyle(color: Colors.white, fontSize: 19),
                             ),
+                            const SizedBox(height: 4),
                             Text(
-                              'PF: $pf',
-                              style: const TextStyle(
-                                  fontSize: 20, color: Colors.white),
+                              "Time On: ${widget.group.time_on.hour}:${widget.group.time_on.minute}",
+                              style: const TextStyle(color: Colors.white, fontSize: 19),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Relays: ${widget.group.relays.join(", ")}",
+                              style: const TextStyle(color: Colors.white, fontSize: 19),
                             ),
                           ],
                         ),
@@ -266,7 +345,7 @@ class ViewGroupsState extends State<ViewGroups> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
-                            margin: const EdgeInsets.fromLTRB(0, 250, 0, 0),
+                            margin: const EdgeInsets.fromLTRB(0, 350, 0, 0),
                             child: component,
                           )
                         ],
@@ -274,6 +353,7 @@ class ViewGroupsState extends State<ViewGroups> {
                     ),
                     Column(
                       mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Container(
                           margin: const EdgeInsets.fromLTRB(50, 0, 50, 0),
@@ -282,87 +362,79 @@ class ViewGroupsState extends State<ViewGroups> {
                             children: [
                               Container(
                                   margin:
-                                      const EdgeInsets.fromLTRB(0, 0, 0, 30),
+                                  const EdgeInsets.fromLTRB(0, 0, 0, 30),
                                   child: Center(
                                       child: SizedBox(
-                                    width: 60,
-                                    height: 60,
-                                    child: FloatingActionButton(
-                                      backgroundColor: Colors.black54,
-                                      onPressed: () {
-                                        setState(() {
-                                          load(context);
-                                        });
-                                      },
-                                      child: const Icon(
-                                        UniconsLine.refresh,
-                                        color: Colors.white,
-                                        size: 26.6,
-                                      ),
-                                    ),
-                                  ))),
-                              const Spacer(),
-                              Container(
-                                  margin:
-                                      const EdgeInsets.fromLTRB(0, 0, 0, 30),
-                                  child: Center(
-                                      child: SizedBox(
-                                    width: 80,
-                                    height: 80,
-                                    child: FloatingActionButton(
-                                      backgroundColor: Colors.black54,
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const AddGroup()),
-                                        ).then((value) {
-                                          if (value == "closed") {
+                                        width: 60,
+                                        height: 60,
+                                        child: FloatingActionButton(
+                                          backgroundColor: Colors.black54,
+                                          onPressed: () {
                                             setState(() {
                                               load(context);
                                             });
-                                          }
-                                        });
-                                      },
-                                      child: const Icon(
-                                        UniconsLine.plus_circle,
-                                        color: Colors.white,
-                                        size: 40,
-                                      ),
-                                    ),
-                                  ))),
+                                          },
+                                          child: const Icon(
+                                            UniconsLine.refresh,
+                                            color: Colors.white,
+                                            size: 26.6,
+                                          ),
+                                        ),
+                                      ))),
                               const Spacer(),
                               Container(
                                   margin:
-                                      const EdgeInsets.fromLTRB(0, 0, 0, 30),
+                                  const EdgeInsets.fromLTRB(0, 0, 0, 30),
                                   child: Center(
                                       child: SizedBox(
-                                    width: 60,
-                                    height: 60,
-                                    child: FloatingActionButton(
-                                      backgroundColor: Colors.black54,
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const RelayControll()),
-                                        ).then((value) {
-                                          if (value == "closed") {
-                                            setState(() {
-                                              load(context);
+                                        width: 60,
+                                        height: 60,
+                                        child: FloatingActionButton(
+                                          backgroundColor: Colors.black54,
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (context) =>
+                                                  UpdateGroup(group: widget.group)),
+                                            ).then((value) {
+                                              if (value == "closed") {
+                                                setState(() {
+                                                  widget.load(widget.contextHome);
+                                                  Navigator.pop(context,"closed");
+                                                });
+                                              }
                                             });
-                                          }
-                                        });
-                                      },
-                                      child: const Icon(
-                                        UniconsLine.setting,
-                                        color: Colors.white,
-                                        size: 26.6,
-                                      ),
-                                    ),
-                                  )))
+                                          },
+                                          child: const Icon(
+                                            UniconsLine.pen,
+                                            color: Colors.white,
+                                            size: 26.6,
+                                          ),
+                                        ),
+                                      ))),
+                              const Spacer(),
+                              Container(
+                                  margin:
+                                  const EdgeInsets.fromLTRB(0, 0, 0, 30),
+                                  child: Center(
+                                      child: SizedBox(
+                                        width: 60,
+                                        height: 60,
+                                        child: FloatingActionButton(
+                                          backgroundColor: Colors.black54,
+                                          onPressed: () async {
+                                            _showDeleteConfirmation();
+                                          },
+                                          child: const Icon(
+                                            UniconsLine.trash,
+                                            color: Colors.red,
+                                            size: 26.6,
+                                          ),
+                                        ),
+                                      )
+                                  )
+                              )
                             ],
                           ),
                         )
@@ -370,7 +442,9 @@ class ViewGroupsState extends State<ViewGroups> {
                     )
                   ],
                 ),
-              ))),
+              )
+          )
+      ),
     );
   }
 }

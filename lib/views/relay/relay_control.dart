@@ -64,8 +64,10 @@ class RelayControllState extends State<RelayControll>{
             switch (snapshot.connectionState) {
               case ConnectionState.none:
               case ConnectionState.waiting:
-                return const CircularProgressIndicator(
-                  color: Colors.white70,
+                return const Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white70,
+                  ),
                 );
               default:
                 if (snapshot.hasError) {
@@ -197,7 +199,7 @@ class RelayControllState extends State<RelayControll>{
             right: 0,
             child: Container(
               margin: const EdgeInsets.fromLTRB(30, 30, 30, 0),
-              padding:  EdgeInsets.fromLTRB(30, 30, 30, 0),
+              padding:  const EdgeInsets.fromLTRB(30, 30, 30, 0),
               color: Colors.lightBlueAccent,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,

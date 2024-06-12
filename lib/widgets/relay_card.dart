@@ -31,7 +31,7 @@ class _RelayCardState extends State<RelayCard> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CheckboxListTile(
-            title: Text("Componente: ${widget.relay.id}",style: TextStyle(color: Colors.white),),
+            title: Text("Componente: ${widget.relay.id}",style: const TextStyle(color: Colors.white),),
             value: isSelected,
             secondary: Image.asset('assets/icons/relay.png'),
             activeColor: Colors.white,
